@@ -1,0 +1,7 @@
+package com.opteamix.perfometer.models.requests;
+
+public class FirebaseRequest extends PerfometerBaseRequest {
+
+    private String loginSource;
+    private String deviceId;
+    private String firebaseId

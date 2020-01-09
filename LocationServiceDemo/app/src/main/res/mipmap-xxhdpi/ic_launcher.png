@@ -1,0 +1,186 @@
+package com.philips.h2h.vHubAuthenticator.network;
+
+import android.annotation.SuppressLint;
+import android.util.Base64;
+import android.util.Log;
+import com.philips.h2h.vHubAuthenticator.Util;
+import org.json.JSONObject;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.UnsupportedEncodingException;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.security.spec.KeySpec;
+import java.util.Random;
+
+import javax.crypto.BadPaddingException;
+import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.KeyGenerator;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.PBEKeySpec;
+import javax.crypto.spec.SecretKeySpec;
+
+public class WebAPI {
+
+    public static String TAG = "WEBAPI:";
+    private static WebAPI _instance;
+    private static String server_url;
+    private static String app_ID;
+    private static String api_Version;
+    private static String secret_Key;
+    private String errorResponse="";
+
+    private WebAPI() {
+    }
+
+    public static WebAPI getInstance(String server_urlData, String app_IDData, String api_VersionData, String api_secret_Key) {
+        if (_instance == null) {
+            _instance = new WebAPI();
+        }
+        server_url = server_urlData;
+        app_ID = app_IDData;
+        api_Version = api_VersionData;
+        secret_Key = api_secret_Key;
+        return _instance;
+    }
+
+    @SuppressLint("NewApi")
+    public static String encryptdata(String stingToEncode) {
+        String response;
+        try {
+            response =  Base64.encodeToString(stingToEncode.getBytes(), Base64.NO_WRAP);
+        } catch (Exception e) {
+            response = "error";
+        }
+        return response;
+
+    }
+
+    public String getAuthCodeForDeviceId(String deviceID) {
+        // so that they can be closed in the finally block.
+        HttpURLConnection urlConnection = null;
+        BufferedReader reader = null;
+        String errorResponse;
+        // Will contain the raw JSON response as a string.
+        String jsonStr = null;
+        String appCode = null;
+
+        try {
+
+            String imeiURL = server_url + deviceID;
+            URL url = new URL(imeiURL);
+            urlConnection = (HttpURLConnection) url.openConnection();
+            urlConnection.setRequestMethod("POST");
+
+            try {
+                appCode = encryptMsg(app_ID + "-" + deviceID ,secret_Key);
+            }
+            catch (Exception e) {
+                e.printStackTrace();
+                return "Error: " + e.getMessage();
+            }
+
+            urlConnection.setRequestProperty("package-code", appCode);
+
+            OutputStream os = urlConnection.getOutputStream();
+            OutputStreamWriter osw = new OutputStreamWriter(os, "UTF-8");
+            JSONObject jsonRequestBody = new JSONObject();
+
+            osw.write(jsonRequestBody.toString());
+            osw.flush();
+            osw.close();
+            os.close();
+            urlConnection.connect();
+
+            int respCode = urlConnection.getResponseCode();
+            if(respCode == HttpURLConnection.HTTP_ACCEPTED || respCode == HttpURLConnection.HTTP_OK)
+            {
+                InputStream inputStream = urlConnection.getInputStream();
+                StringBuffer buffer = new StringBuffer();
+                if (inputStream == null) {
+                    // Nothing to do.
+                    return null;
+                }
+                reader = new BufferedReader(new InputStreamReader(inputStream));
+                String inputLine = "";
+                while ((inputLine = reader.readLine()) != null) {
+                    buffer.append(inputLine);
+                }
+
+                if (buffer.length() == 0) {
+                    // Stream was empty.  No point in parsing.
+                    return null;
+                }
+                jsonStr = buffer.toString();
+                return jsonStr;
+            }
+            else {
+                if(urlConnection.getResponseCode()!= -1 && urlConnection.getResponseCode() == 404)
+                {
+                    errorResponse = "Error: " + Util.DEVICENOTFOUND;
+                }
+                else
+                {
+                    errorResponse = "Error: " + Util.SERVER_ERROR;
+                }
+                return errorResponse;
+            }
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error ", e);
+
+            return "Error:"+e.toString();
+
+        } finally {
+            if (urlConnection != null) {
+                urlConnection.disconnect();
+            }
+            if (reader != null) {
+                try {
+                    reader.close();
+                } catch (final IOException e) {
+                    Log.e(TAG, "Error closing stream", e);
+                }
+            }
+        }
+    }
+
+    public static SecretKey generateKey (String code)
+    {
+
+            SecretKey secret;
+            System.out.println("CODE LENGTH=" + code.getBytes().length);
+            return new SecretKeySpec(code.getBytes(), "AES");
+
+
+
+
+    }
+
+    public static String encryptMsg(String message, String code) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, UnsupportedEncodingException, BadPaddingException, IllegalBlockSizeException {
+        /* Encrypt the message. */
+       try {
+           SecretKey ty = generateKey(code);
+
+           Cipher cipher = null;
+
+           private String iv = "fedcba9876543210";            // Dummy iv (CHANGE IT!)
+           private IvParameterSpec ivspec;
+
+           cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
+           cipher.init(Cipher.ENCRYPT_MODE, ty);
+           byte[] cipherText = cipher.doFinal(message.getBytes("UTF-8"));
+           String yui = new String(Base64.encodeToString(cipherText, Base64.NO_WRAP));
+           return yui;
+   

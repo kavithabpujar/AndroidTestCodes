@@ -1,0 +1,63 @@
+package com.philips.h2h.vHubAuthenticator.network;
+
+import android.annotation.SuppressLint;
+import android.util.Base64;
+import android.util.Log;
+import com.philips.h2h.vHubAuthenticator.Util;
+import org.json.JSONObject;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.UnsupportedEncodingException;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.security.spec.KeySpec;
+import java.util.Random;
+
+import javax.crypto.BadPaddingException;
+import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.KeyGenerator;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.PBEKeySpec;
+import javax.crypto.spec.SecretKeySpec;
+
+public class WebAPI {
+
+    public static String TAG = "WEBAPI:";
+    private static WebAPI _instance;
+    private static String server_url;
+    private static String app_ID;
+    private static String api_Version;
+    private static String secret_Key;
+    private String errorResponse="";
+
+    private WebAPI() {
+    }
+
+    public static WebAPI getInstance(String server_urlData, String app_IDData, String api_VersionData, String api_secret_Key) {
+        if (_instance == null) {
+            _instance = new WebAPI();
+        }
+        server_url = server_urlData;
+        app_ID = app_IDData;
+        api_Version = api_VersionData;
+        secret_Key = api_secret_Key;
+        return _instance;
+    }
+
+    @SuppressLint("NewApi")
+    public static String encryptdata(String stingToEncode) {
+        String response;
+        try {
+            response =  Base64.encodeToString(stingToEncode.getBytes(), Base64.NO_WRAP);
+    
